@@ -13,7 +13,7 @@ setup(
       license='MIT',
       packages=['lab_sc_gcp'],
       # package_dir={'lab_sc_gcp': 'lab_sc_gcp'},
-      package_data={'lab_sc_gcp': ['startup/*']},
+      package_data={'lab_sc_gcp': ['startup/*', 'config/*']},
       install_requires=[
           'google-api-python-client',
           'google-cloud-storage',

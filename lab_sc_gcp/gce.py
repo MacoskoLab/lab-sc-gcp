@@ -7,24 +7,26 @@ Functions for managing Google Compute Engine (GCE) resources.
 Code referenced from Deverman lab pipeline repo (author Albert Chen).
 """
 from googleapiclient.discovery import build
-from .user_defaults import *
 from pkg_resources import resource_filename
+from lab_sc_gcp.config.configure import *
+
+config = get_config()
 
 def create_instance(
-    user,
     rstudio_passwd,
-    name=INSTANCE_NAME,
-    project=GCP_PROJECT_ID,
-    zone=GCP_ZONE,
-    machine_type=MACHINE_TYPE,
-    boot_disk_size=BOOT_DISK_SIZE,
-    image=IMAGE_NAME,
+    user=config['LOCAL']['user'],
+    name=config['GCP']['instance_name'],
+    project=config['GCP']['gcp_project_id'],
+    zone=config['GCP']['gcp_zone'],
+    machine_type=config['GCP']['machine_type'],
+    boot_disk_size=config['GCP']['boot_disk_size'],
+    image=config['GCP']['image'],
     disk_type='pd-standard',
 ):
     """
 
-    :param user:
     :param rstudio_passwd:
+    :param user:
     :param name:
     :param project:
     :param zone:
@@ -158,8 +160,10 @@ def create_instance(
 
     return res
 
-def list_instances(project=GCP_PROJECT_ID,
-                   zone=GCP_ZONE):
+def list_instances(
+    project=config['GCP']['gcp_project_id'],
+    zone=config['GCP']['gcp_zone'],
+):
     # http://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.html
     service = build('compute', 'v1')
     instances = service.instances()
@@ -171,10 +175,10 @@ def list_instances(project=GCP_PROJECT_ID,
     return res
 
 def stop_instance(
-    user,
-    name=INSTANCE_NAME,
-    project=GCP_PROJECT_ID,
-    zone=GCP_ZONE,
+    user=config['LOCAL']['user'],
+    name=config['GCP']['instance_name'],
+    project=config['GCP']['gcp_project_id'],
+    zone=config['GCP']['gcp_zone'],
 ):
     # Add user to instance name if necessary
     if user not in name:
@@ -191,10 +195,10 @@ def stop_instance(
     return res
 
 def delete_instance(
-    user,
-    name=INSTANCE_NAME,
-    project=GCP_PROJECT_ID,
-    zone=GCP_ZONE,
+    user=config['LOCAL']['user'],
+    name=config['GCP']['instance_name'],
+    project=config['GCP']['gcp_project_id'],
+    zone=config['GCP']['gcp_zone'],
 ):
     # Add user to instance name if necessary
     if user not in name:
@@ -211,10 +215,10 @@ def delete_instance(
     return res
 
 def start_instance(
-    user,
-    name=INSTANCE_NAME,
-    project=GCP_PROJECT_ID,
-    zone=GCP_ZONE,
+    user=config['LOCAL']['user'],
+    name=config['GCP']['instance_name'],
+    project=config['GCP']['gcp_project_id'],
+    zone=config['GCP']['gcp_zone'],
 ):
     # Add user to instance name if necessary
     if user not in name:
@@ -231,11 +235,11 @@ def start_instance(
     return res
 
 def set_machine_type(
-    user,
-    machine_type=MACHINE_TYPE,
-    name=INSTANCE_NAME,
-    project=GCP_PROJECT_ID,
-    zone=GCP_ZONE,
+    user=config['LOCAL']['user'],
+    machine_type=config['GCP']['machine_type'],
+    name=config['GCP']['instance_name'],
+    project=config['GCP']['gcp_project_id'],
+    zone=config['GCP']['gcp_zone'],
 ):
     # Add user to instance name if necessary
     if user not in name:
@@ -258,12 +262,12 @@ def set_machine_type(
     return res
 
 def set_label(
-    user,
     label_key,
     label_value,
-    name=INSTANCE_NAME,
-    project=GCP_PROJECT_ID,
-    zone=GCP_ZONE,
+    user=config['LOCAL']['user'],
+    name=config['GCP']['instance_name'],
+    project=config['GCP']['gcp_project_id'],
+    zone=config['GCP']['gcp_zone'],
 ):
     # Add user to instance name if necessary
     if user not in name:

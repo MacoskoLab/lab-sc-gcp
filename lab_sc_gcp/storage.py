@@ -7,34 +7,17 @@ Functions for managing Google Compute Storage (GCE) resources.
 Also includes some wrappers for gsutil calls.
 """
 from googleapiclient.discovery import build
-from .user_defaults import *
-from pkg_resources import resource_filename
+from lab_sc_gcp.config.configure import *
 
 from google.cloud import storage
 from subprocess import PIPE, run, call
 
-def upload_file(
-    source_file_name,
-    destination_name,
-    bucket_name=BUCKET,
-):
-    """
-    Uploads a file to the bucket.
-    """
-    # bucket_name = "your-bucket-name"
-    # source_file_name = "local/path/to/file"
-    # destination_blob_name = "storage-object-name"
-
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(destination_name)
-
-    blob.upload_from_filename(source_file_name)
+config = get_config()
 
 def upload_libraries_10x(
     libraries,
-    bucket_name=BUCKET,
-    library_dir=LIB_DIR_SC,
+    bucket_name=config['GCP']['bucket'],
+    library_dir=config['LOCAL']['lib_dir_sc'],
 ):
     """
     Currently only supports 10x libraries generated with v>=3.
@@ -63,8 +46,8 @@ def upload_libraries_10x(
 
 def upload_libraries_jp(
     libraries,
-    bucket_name=BUCKET,
-    library_dir=LIB_DIR_SC,
+    bucket_name=config['GCP']['bucket'],
+    library_dir=config['LOCAL']['lib_dir_sc'],
 ):
     """
 
@@ -90,3 +73,21 @@ def upload_libraries_jp(
     gsutil_args = ['gsutil', 'cp', '{}/{}/*/alignment/*digital_expression_summary*'.format(library_dir, libraries),
                    '{}/libraries/{}/'.format(bucket_name, libraries)]
     call(gsutil_args)
+
+# def upload_file(
+#     source_file_name,
+#     destination_name,
+#     bucket_name=BUCKET,
+# ):
+#     """
+#     Uploads a file to the bucket.
+#     """
+#     # bucket_name = "your-bucket-name"
+#     # source_file_name = "local/path/to/file"
+#     # destination_blob_name = "storage-object-name"
+#
+#     storage_client = storage.Client()
+#     bucket = storage_client.bucket(bucket_name)
+#     blob = bucket.blob(destination_name)
+#
+#     blob.upload_from_filename(source_file_name)
