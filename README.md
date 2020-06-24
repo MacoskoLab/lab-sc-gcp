@@ -18,6 +18,8 @@ Relies on GCP images with RStudio Server and common single cell packages like Se
     * [`lab-gcp create-instance`](#lab-gcp-create-instance)
     * [`lab-gcp list-instances`](#lab-gcp-list-instances)
     * [`lab-gcp stop-instance`](#lab-gcp-stop-instance)
+    * [`lab-gcp set-machine-type`](#lab-gcp-set-machine-type)
+    * [`lab-gcp upload-libs`](#lab-gcp-upload-libs)
 * [Bucket to instance transfer](#bucket-to-instance-transfer)
 * [Time management exceptions](#time-management-exceptions)
 * [Connecting to instances through SSH](#connecting-to-instances-through-ssh)
@@ -100,11 +102,14 @@ Setup Guidelines.
 
 ## Basic Workflow
 ### 1. Create an instance with desired resources. 
+* Use the command `lab-gcp create-instance`. 
 * Run `lab-gcp list-machine-types` to see the resources for different kinds of machines. 
 * You must provide a password with the `--rpass` argument. 
 * Access RStudio Server in your browser at the provided IP address (with Broad username and provided password).
 * *Important:* If you're offsite, you must first connect to [VPN](https://intranet.broadinstitute.org/bits/service-catalog/networking/vpn), 
 with the Z-Duo-Broad-NonSplit-VPN option, in order to access your instance online. 
+* Note that all instance names have user name appended by default to allow us to distinguish
+instances. 
 
 ### 2. Transfer your data. 
 * For single cell count libraries, you must transfer your data first to a bucket, and then
@@ -151,6 +156,9 @@ positional arguments:
                         Upload file or directory to GCP instance.
     init                Initialize default settings.
 
+optional arguments:
+  -h, --help            show this help message and exit
+  --project PROJECT     Project ID (defaults to id specified in config file).
 ```
 
 #### `lab-gcp create-instance`
@@ -161,6 +169,19 @@ usage: lab-gcp create-instance [-h] --rpass RPASS [--user USER]
                               [--machine-type MACHINE_TYPE]
                               [--boot-disk-size BOOT_DISK_SIZE]
                               [--image IMAGE]
+optional arguments:
+  -h, --help            show this help message and exit
+  --rpass RPASS         Password to use for Rstudio Server.
+  --user USER           User name to associate with instance.
+  --instance INSTANCE   Name to use for instance. Will append user name if
+                        necessary.
+  --zone ZONE           Zone in which to create instance.
+  --machine-type MACHINE_TYPE
+                        Machine type. List possible machine types with "lab-
+                        gcp list-machine-types".
+  --boot-disk-size BOOT_DISK_SIZE
+                        Size of boot disk in GB (at least 20).
+  --image IMAGE         Image to use in creating instance.
 
 ```
 
@@ -186,6 +207,43 @@ optional arguments:
   --zone ZONE          GCP zone.
   --instance INSTANCE  Name of instance to stop.
 ```
+
+#### `lab-gcp set-machine-type`
+
+```
+usage: lab-gcp set-machine-type [-h] [--user USER]
+                               [--machine-type MACHINE_TYPE] [--zone ZONE]
+                               [--instance INSTANCE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --user USER           User name to associate with instance.
+  --machine-type MACHINE_TYPE
+                        Machine type to set for instance. List possible
+                        machine types with "lab-gcp list-machine-types".
+  --zone ZONE           GCP zone.
+  --instance INSTANCE   Name of instance to start.
+```
+
+#### `lab-gcp upload-libs`
+
+```
+usage: lab-gcp upload-libs [-h] [--user USER] [--bucket BUCKET] --libraries
+                          LIBRARIES [--library-dir LIBRARY_DIR]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --user USER           User name to associate with instance.
+  --bucket BUCKET       Bucket to which to upload libraries.
+  --libraries LIBRARIES
+                        Name of library (not full path) to upload or path to
+                        file containing library names. If file, libraries must
+                        be listed one per line with no other separators.
+  --library-dir LIBRARY_DIR
+                        Path to directory where libraries stored (defaults to
+                        /broad/macosko/data/libraries).
+```
+
 
 ## Bucket to instance transfer 
 Once you've uploaded single cell data to a bucket, the easiest way to transfer it to your
