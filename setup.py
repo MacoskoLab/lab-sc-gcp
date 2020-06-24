@@ -14,6 +14,10 @@ setup(
       packages=['lab_sc_gcp'],
       # package_dir={'lab_sc_gcp': 'lab_sc_gcp'},
       package_data={'lab_sc_gcp': ['startup/*']},
+      install_requires=[
+          'google-api-python-client',
+          'google-cloud-storage',
+      ],
       entry_points={
             'console_scripts': ['lab-gcp=lab_sc_gcp.cli:main'],
       },
