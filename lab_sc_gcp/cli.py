@@ -257,6 +257,37 @@ def create_parser():
         help='Path to directory where libraries stored (defaults to /broad/macosko/data/libraries).',
     )
 
+    # Upload libraries to bucket parser
+    parser_upload_dir_inst = subargs.add_parser(
+        c_UPLOAD_DIR_INST,
+        help="Upload file or directory to GCP instance.",
+    )
+    parser_upload_dir_inst.add_argument(
+        '--user',
+        default=USER,
+        help='User name to associate with instance.',
+    )
+    parser_upload_dir_inst.add_argument(
+        '--zone',
+        default=GCP_ZONE,
+        help='GCP zone.',
+    )
+    parser_upload_dir_inst.add_argument(
+        '--instance',
+        default=INSTANCE_NAME,
+        help='Name of instance to which to upload data.',
+    )
+    parser_upload_dir_inst.add_argument(
+        '--source-path',
+        required=True,
+        help='File path to data to upload.',
+    )
+    parser_upload_dir_inst.add_argument(
+        '--dest-path',
+        default=None,
+        help='Destination path for data.',
+    )
+
     return args
 
 def main():
@@ -409,6 +440,24 @@ def main():
 
         # TODO: Check if some libraries have already been uploaded?
         # gsutil will log directly to console
+
+    if parsed_args.command == c_UPLOAD_DIR_INST:
+        # Set default destination
+        if parsed_args.dest_path is None:
+            dest_path = '/home/{}/'.format(parsed_args.user)
+
+        # Generate full instance name
+        final_name = parsed_args.instance
+        if parsed_args.user not in parsed_args.instance:
+            final_name = '-'.join([parsed_args.instance, parsed_args.user])
+
+        # Could also do this with paramiko instead
+        scp_args = ['gcloud', 'compute', 'scp', '--recurse', parsed_args.source_path,
+                    '{}:{}'.format(final_name, dest_path), '--project', parsed_args.project,
+                    '--zone', parsed_args.zone]
+        call(scp_args)
+
+        # gcloud logs directly to console
 
 
 
