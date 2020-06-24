@@ -15,6 +15,6 @@ INSTANCE_NAME = "rstudio-sc2"
 
 GCP_INSTANCE_SCOPES = "default,bigquery,cloud-platform,storage-rw"
 IMAGE_NAME = "rstudio-sc-basic-small-2"
-LIB_DIR_10x = "/broad/macosko/data/libraries"
+LIB_DIR_SC = "/broad/macosko/data/libraries"
 BUCKET = "macosko_data"
 TO = "data/"

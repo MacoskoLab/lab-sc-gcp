@@ -31,26 +31,62 @@ def upload_file(
 
     blob.upload_from_filename(source_file_name)
 
-def upload_libraries(
+def upload_libraries_10x(
     libraries,
     bucket_name=BUCKET,
-    library_dir=LIB_DIR_10x,
+    library_dir=LIB_DIR_SC,
 ):
+    """
+    Currently only supports 10x libraries generated with v>=3.
+    :param libraries:
+    :param bucket_name:
+    :param library_dir:
+    :return:
+    """
     # Add prefix if necessary
     if 'gs://' not in bucket_name:
         bucket_name = 'gs://' + bucket_name
 
-    for lib in libraries:
-        # Series of gsutil calls because rsync exclude functionality doesn't work...
-        gsutil_args = ['gsutil', 'cp', '{}/outs/raw_feature_bc_matrix.h5'.format(lib),
-                        '{}/libraries/{}/outs/'.format(bucket_name, lib)]
-        call(gsutil_args)
-        gsutil_args = ['gsutil', 'cp', '{}/outs/filtered_feature_bc_matrix.h5'.format(lib),
-                       '{}/libraries/{}/outs/'.format(bucket_name, lib)]
-        call(gsutil_args)
-        gsutil_args = ['gsutil', 'cp', '-r', '{}/outs/raw_feature_bc_matrix/'.format(lib),
-                       '{}/libraries/{}/outs/'.format(bucket_name, lib)]
-        call(gsutil_args)
-        gsutil_args = ['gsutil', 'cp', '-r', '{}/outs/filtered_feature_bc_matrix/'.format(lib),
-                       '{}/libraries/{}/outs/'.format(bucket_name, lib)]
-        call(gsutil_args)
+    # Series of gsutil calls because rsync exclude functionality doesn't work...
+    gsutil_args = ['gsutil', 'cp', '{}/{}/outs/raw_feature_bc_matrix.h5'.format(library_dir, libraries),
+                    '{}/libraries/{}/outs/'.format(bucket_name, libraries)]
+    call(gsutil_args)
+    gsutil_args = ['gsutil', 'cp', '{}/{}/outs/filtered_feature_bc_matrix.h5'.format(library_dir, libraries),
+                   '{}/libraries/{}/outs/'.format(bucket_name, libraries)]
+    call(gsutil_args)
+    gsutil_args = ['gsutil', 'cp', '-r', '{}/{}/outs/raw_feature_bc_matrix/'.format(library_dir, libraries),
+                   '{}/libraries/{}/outs/'.format(bucket_name, libraries)]
+    call(gsutil_args)
+    gsutil_args = ['gsutil', 'cp', '-r', '{}/{}/outs/filtered_feature_bc_matrix/'.format(library_dir, libraries),
+                   '{}/libraries/{}/outs/'.format(bucket_name, libraries)]
+    call(gsutil_args)
+
+def upload_libraries_jp(
+    libraries,
+    bucket_name=BUCKET,
+    library_dir=LIB_DIR_SC,
+):
+    """
+
+    :param libraries:
+    :param bucket_name:
+    :param library_dir:
+    :return:
+    """
+    # Add prefix if necessary
+    if 'gs://' not in bucket_name:
+        bucket_name = 'gs://' + bucket_name
+
+    # Series of gsutil calls because rsync exclude functionality doesn't always work...
+    gsutil_args = ['gsutil', 'cp', '{}/{}/*/alignment/*digital_expression_matrix*'.format(library_dir, libraries),
+                    '{}/libraries/{}/'.format(bucket_name, libraries)]
+    call(gsutil_args)
+    gsutil_args = ['gsutil', 'cp', '{}/{}/*/alignment/*digital_expression_barcodes*'.format(library_dir, libraries),
+                   '{}/libraries/{}/'.format(bucket_name, libraries)]
+    call(gsutil_args)
+    gsutil_args = ['gsutil', 'cp', '{}/{}/*/alignment/*digital_expression_features*'.format(library_dir, libraries),
+                   '{}/libraries/{}/'.format(bucket_name, libraries)]
+    call(gsutil_args)
+    gsutil_args = ['gsutil', 'cp', '{}/{}/*/alignment/*digital_expression_summary*'.format(library_dir, libraries),
+                   '{}/libraries/{}/'.format(bucket_name, libraries)]
+    call(gsutil_args)
