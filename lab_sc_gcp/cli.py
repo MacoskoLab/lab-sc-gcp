@@ -140,7 +140,7 @@ def create_parser():
     # Delete instance subparser
     parser_delete_instance = subargs.add_parser(
         c_DELETE,
-        help="Stop running instance.",
+        help="Delete instance permanently.",
     )
     parser_delete_instance.add_argument(
         '--user',
@@ -255,7 +255,7 @@ def create_parser():
     parser_upload_libs.add_argument(
         '--bucket',
         default=config['GCP']['bucket'],
-        help='Bucket to which to upload libraries.',
+        help='Bucket to which to upload libraries."gs://" prefix is not necessary.',
     )
     parser_upload_libs.add_argument(
         '--libraries',
