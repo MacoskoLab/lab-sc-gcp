@@ -11,6 +11,7 @@ import time
 from lab_sc_gcp.config.configure import *
 from lab_sc_gcp.gce import *
 from lab_sc_gcp.storage import *
+from lab_sc_gcp.utilities import *
 from subprocess import PIPE, run, call
 
 import warnings
@@ -39,12 +40,6 @@ max_inst = 2  # max number of instances allowed at one time
 
 # Configure user defaults
 config = get_config()
-
-def confirm(question):
-    while True:
-        answer = input(question + ' (y/n): ').lower().strip()
-        if answer in ('y', 'yes', 'n', 'no'):
-            return answer in ('y', 'yes')
 
 def create_parser():
     """
@@ -346,18 +341,16 @@ def main():
         user = parsed_args.user
         instances = list_instances(parsed_args.project)
         curr_user = [inst.get('labels', {}).get('owner') for inst in instances['items']]
-        # TODO: fix error codes
+
         if curr_user.count(user) >= max_inst:
             raise RuntimeError('You already have {} instances in use. '.format(max_inst) +
                                'Please delete one before creating another.\n' +
                                'You can see your existing instances with "lab-gcp list instances".')
         # Generate full instance name
-        final_name = parsed_args.instance
-        if parsed_args.user not in parsed_args.instance:
-            final_name = '-'.join([parsed_args.instance, parsed_args.user])
+        full_name = get_full_inst_name(parsed_args.instance, parsed_args.user)
         curr_names = [inst['name'] for inst in instances['items']]
-        if final_name in curr_names:
-            raise RuntimeError('An instance with the name {} already exists. '.format(final_name) +
+        if full_name in curr_names:
+            raise RuntimeError('An instance with the name {} already exists. '.format(full_name) +
                                'Please select a different name.')
 
         # TODO: make sure instance name contains no slashes, other breaking chars
@@ -369,13 +362,13 @@ def main():
                               machine_type=parsed_args.machine_type,
                               boot_disk_size=parsed_args.boot_disk_size,
                               image=parsed_args.image)
-        final_name = res['targetLink'].split('/')[-1]
+
         # In case creation is slow
         time.sleep(5)
         instances = list_instances(project=parsed_args.project)
         nat_ip = [item for item in instances['items']
-                  if item['name'] == final_name][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
-        print('Your instance {} has been created.'.format(final_name))
+                  if item['name'] == full_name][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
+        print('Your instance {} has been created.'.format(full_name))
         print('You can access RStudio Server at http://{}:8787.'.format(nat_ip))
 
 
@@ -391,23 +384,21 @@ def main():
                             name=parsed_args.instance,
                             project=parsed_args.project,
                             zone=parsed_args.zone)
-        final_name = res['targetLink'].split('/')[-1]
-        print('Your instance {} is being stopped. This may take a minute.'.format(final_name))
+        full_name = res['targetLink'].split('/')[-1]
+        print('Your instance {} is being stopped. This may take a minute.'.format(full_name))
 
     if parsed_args.command == c_DELETE:
         # Generate full instance name
-        final_name = parsed_args.instance
-        if parsed_args.user not in parsed_args.instance:
-            final_name = '-'.join([parsed_args.instance, parsed_args.user])
+        full_name = get_full_inst_name(parsed_args.instance, parsed_args.user)
 
-        confirmed = confirm("Are you sure you want to delete instance {}? ".format(final_name) +
+        confirmed = confirm("Are you sure you want to delete instance {}? ".format(full_name) +
                             "The corresponding boot disk will also be deleted.")
         if confirmed:
             res = delete_instance(user=parsed_args.user,
                                   name=parsed_args.instance,
                                   project=parsed_args.project,
                                   zone=parsed_args.zone)
-            print('Your instance {} is being deleted. This may take a minute.'.format(final_name))
+            print('Your instance {} is being deleted. This may take a minute.'.format(full_name))
 
     if parsed_args.command == c_START:
         # TODO: Add check to see if instance has already been started
@@ -416,25 +407,23 @@ def main():
                              project=parsed_args.project,
                              zone=parsed_args.zone)
 
-        final_name = res['targetLink'].split('/')[-1]
-        print('Your instance {} is being started. This may take a minute.'.format(final_name))
+        full_name = res['targetLink'].split('/')[-1]
+        print('Your instance {} is being started. This may take a minute.'.format(full_name))
         time.sleep(5)
         instances = list_instances(project=parsed_args.project)
         nat_ip = [item for item in instances['items']
-                  if item['name'] == final_name][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
+                  if item['name'] == full_name][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
 
         print('You can access RStudio Server at http://{}:8787.'.format(nat_ip))
 
     if parsed_args.command == c_SET_MACHINE:
         # Generate full instance name
-        final_name = parsed_args.instance
-        if parsed_args.user not in parsed_args.instance:
-            final_name = '-'.join([parsed_args.instance, parsed_args.user])
+        full_name = get_full_inst_name(parsed_args.instance, parsed_args.user)
 
         # Check that instance is stopped
         instances = list_instances(project=parsed_args.project)
         status = nat_ip = [item for item in instances['items']
-                  if item['name'] == final_name][0]['status']
+                  if item['name'] == full_name][0]['status']
         if status != 'TERMINATED':
             raise RuntimeError('You must stop your instance before changing its machine type. ' +
                                'If you have recently sent a stop command, wait one or two minutes\n' +
@@ -445,9 +434,8 @@ def main():
                                name=parsed_args.instance,
                                project=parsed_args.project,
                                zone=parsed_args.zone)
-        final_name = res['targetLink'].split('/')[-1]
 
-        print('The machine type of your instance {} has been updated to {}.'.format(final_name,
+        print('The machine type of your instance {} has been updated to {}.'.format(full_name,
                                                                                     parsed_args.machine_type))
 
     if parsed_args.command == c_LIST_MACHINES:
@@ -471,8 +459,8 @@ def main():
                         project=parsed_args.project,
                         zone=parsed_args.zone)
 
-        final_name = res['targetLink'].split('/')[-1]
-        print('Your instance {} has been set to {}.'.format(final_name,
+        full_name = res['targetLink'].split('/')[-1]
+        print('Your instance {} has been set to {}.'.format(full_name,
                                                             label_value))
 
     if parsed_args.command == c_UPLOAD_LIBS:
@@ -512,13 +500,11 @@ def main():
             dest_path = '/home/{}/'.format(parsed_args.user)
 
         # Generate full instance name
-        final_name = parsed_args.instance
-        if parsed_args.user not in parsed_args.instance:
-            final_name = '-'.join([parsed_args.instance, parsed_args.user])
+        full_name = get_full_inst_name(parsed_args.instance, parsed_args.user)
 
         # Could also do this with paramiko instead
         scp_args = ['gcloud', 'compute', 'scp', '--recurse', parsed_args.source_path,
-                    '{}:{}'.format(final_name, dest_path), '--project', parsed_args.project,
+                    '{}:{}'.format(full_name, dest_path), '--project', parsed_args.project,
                     '--zone', parsed_args.zone]
         call(scp_args)
 

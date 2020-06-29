@@ -9,6 +9,7 @@ Code referenced from Deverman lab pipeline repo (author Albert Chen).
 from googleapiclient.discovery import build
 from pkg_resources import resource_filename
 from lab_sc_gcp.config.configure import *
+from lab_sc_gcp.utilities import *
 
 config = get_config()
 
@@ -42,9 +43,8 @@ def create_instance(
         startup_script = startup_script.replace("${USER}", user)
         startup_script = startup_script.replace("${R_PASS}", rstudio_passwd)
 
-    # Add user to instance name if necessary
-    if user not in name:
-        name = '-'.join([name, user])
+    # Append user to instance name if necessary
+    name = get_full_inst_name(name, user)
 
     # http://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.html
     service = build('compute', 'v1')
