@@ -10,6 +10,7 @@ from googleapiclient.discovery import build
 from google.cloud import storage
 from lab_sc_gcp.config.configure import *
 from lab_sc_gcp.utilities import *
+from pkg_resources import resource_filename
 import time
 
 config = get_config()
@@ -96,11 +97,20 @@ def create_bucket(
 def enable_apis(
     project=config['GCP']['gcp_project_id'],
     exclude_compute=False,
+    exclude_functions=False,
 ):
     if not exclude_compute:
         call(['gcloud', 'services', 'enable', 'compute.googleapis.com',
               '--project', project])
         print('Enabled Compute Engine API.')
+    if not exclude_functions:
+        call(['gcloud', 'services', 'enable', 'cloudfunctions.googleapis.com',
+              '--project', project])
+        call(['gcloud', 'services', 'enable', 'pubsub.googleapis.com',
+              '--project', project])
+        call(['gcloud', 'services', 'enable', 'cloudscheduler.googleapis.com',
+              '--project', project])
+        print('Enabled Cloud Functions,Pub/Sub and Scheduler APIs.')
 
 def configure_network(
     project=config['GCP']['gcp_project_id'],
@@ -203,9 +213,44 @@ def configure_network(
     res = req.execute()
     print("RStudio/jupyter firewall rule created.")
 
+def create_schedule(
+    shutdown_time="23,59",
+    startup_time=None,
+    zone=config['GCP']['gcp_zone'],
+):
+    # For now use gcloud utilities here
+    # Got source from https://github.com/GoogleCloudPlatform/nodejs-docs-samples
+    # However, most recent version breaks functionality, so have rolled back json source
+    source_dir = resource_filename('lab_sc_gcp', 'schedule')
 
-def create_images():
-    pass
+    # Create instance shutdown and startup functions
+    function_command = ['gcloud', 'pubsub', 'topics', 'create', 'stop-instance-event']
+    call(function_command)
+    function_command = ['gcloud', 'functions', 'deploy', 'stopInstancePubSub', '--trigger-topic',
+                        'stop-instance-event', '--runtime', 'nodejs8', '--source', source_dir]
+    call(function_command)
+    # Start up
+    function_command = ['gcloud', 'pubsub', 'topics', 'create', 'start-instance-event']
+    call(function_command)
+    function_command = ['gcloud', 'functions', 'deploy', 'startInstancePubSub', '--trigger-topic',
+                        'start-instance-event', '--runtime', 'nodejs8', '--source', source_dir]
+    call(function_command)
 
-def create_shutdown_schedule():
-    pass
+    # Schedule the jobs, every day by default
+    # TODO: Automate the creation of App engine app instead of relying on prompt
+    stop_hr = shutdown_time.split(':')[0]
+    stop_min = shutdown_time.split(':')[1]
+    stop_args = ['gcloud', 'beta', 'scheduler', 'jobs', 'create', 'pubsub', 'shutdown-tm-instances',
+                 '--schedule', '{} {} * * *'.format(stop_min, stop_hr), '--topic', 'stop-instance-event',
+                 '--message-body', '{{"zone":"{}", "label":"env=time-managed"}}'.format(zone),
+                 '--time-zone', 'America/New_York']
+    call(stop_args)
+
+    if startup_time:
+        start_hr = startup_time.split(':')[0]
+        start_min = startup_time.split(':')[1]
+        start_args = ['gcloud', 'beta', 'scheduler', 'jobs', 'create', 'pubsub', 'startup-tm-instances',
+                     '--schedule', '{} {} * * *'.format(start_min, start_hr), '--topic', 'start-instance-event',
+                     '--message-body', '{{"zone":"{}", "label":"env=time-managed"}}'.format(zone),
+                     '--time-zone', 'America/New_York']
+        call(start_args)

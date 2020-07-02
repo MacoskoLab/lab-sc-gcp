@@ -28,6 +28,7 @@ c_CREATE_P = 'create-project'
 c_CREATE_B = 'create-bucket'
 c_ENABLE = 'enable-apis'
 c_CONF_NETWORK = 'configure-network'
+c_CREATE_SCHED = 'create-schedule'
 
 c_CREATE = 'create-instance'
 c_LIST = 'list-instances'
@@ -129,6 +130,27 @@ def create_parser():
         help='Zone (translated to region) to use for subnetwork.',
     )
 
+    # Create schedule subparser
+    parser_create_schedule = subargs.add_parser(
+        c_CREATE_SCHED,
+        help="Create shutdown (and startup if desired) schedule for instances.",
+    )
+    parser_create_schedule.add_argument(
+        '--shutdown-time',
+        default="23:59",
+        help='Shutdown time for instances in 24 hour format, eg "23:59".',
+    )
+    parser_create_schedule.add_argument(
+        '--startup-time',
+        default=None,
+        help='Start up time for instances.',
+    )
+    parser_create_schedule.add_argument(
+        '--zone',
+        default=config['GCP']['gcp_zone'],
+        help='Zone (translated to region) to use for schedule targeting.',
+    )
+
 
     ### INSTANCE MANAGEMENT UTILITIES ###
     # Create instance subparser
@@ -170,6 +192,11 @@ def create_parser():
         '--image',
         default=config['GCP']['image'],
         help='Image to use in creating instance.',
+    )
+    parser_create_instance.add_argument(
+        '--image-project',
+        default=config['GCP']['image_project'],
+        help='Source project for image to use in creating instance.',
     )
 
     # List instances subparser
@@ -401,11 +428,16 @@ def main():
         configure_network(project=parsed_args.project,
                           region=parsed_args.zone)
 
+    if parsed_args.command == c_CREATE_SCHED:
+        create_schedule(shutdown_time=parsed_args.shutdown_time,
+                        startup_time=parsed_args.startup_time,
+                        zone=parsed_args.zone)
+
     if parsed_args.command == c_CREATE:
         # Check that user has fewer than max instances
         user = parsed_args.user
         instances = list_instances(parsed_args.project)
-        curr_user = [inst.get('labels', {}).get('owner') for inst in instances['items']]
+        curr_user = [inst.get('labels', {}).get('owner') for inst in instances.get('items', [])]
 
         if curr_user.count(user) >= max_inst:
             raise RuntimeError('You already have {} instances in use. '.format(max_inst) +
@@ -413,7 +445,7 @@ def main():
                                'You can see your existing instances with "lab-gcp list instances".')
         # Generate full instance name
         full_name = get_full_inst_name(parsed_args.instance, parsed_args.user)
-        curr_names = [inst['name'] for inst in instances['items']]
+        curr_names = [inst['name'] for inst in instances.get('items', [])]
         if full_name in curr_names:
             raise RuntimeError('An instance with the name {} already exists. '.format(full_name) +
                                'Please select a different name.')
@@ -426,7 +458,8 @@ def main():
         res = instance_m.create(rstudio_passwd=parsed_args.rpass,
                                 machine_type=parsed_args.machine_type,
                                 boot_disk_size=parsed_args.boot_disk_size,
-                                image=parsed_args.image)
+                                image=parsed_args.image,
+                                image_project=parsed_args.image_project)
 
         # In case creation is slow
         time.sleep(5)

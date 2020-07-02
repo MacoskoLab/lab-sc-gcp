@@ -23,6 +23,7 @@ Relies on GCP images with RStudio Server and common single cell packages like Se
 * [Bucket to instance transfer](#bucket-to-instance-transfer)
 * [Time management exceptions](#time-management-exceptions)
 * [Connecting to instances through SSH](#connecting-to-instances-through-ssh)
+* [Creating and configuring new projects](#creating-and-configuring-new-projects)
 
 ## Requirements
 
@@ -300,3 +301,23 @@ You can connect to your instance via SSH with the following template command:
 gcloud compute ssh --project <project-name> --zone us-central1-f <instance-name>
 ```
 Note that you will need to be connected to the nonsplit VPN.
+
+## Creating and configuring new projects
+
+You can create and easily configure new projects for interactive instance use if
+you have user access to a billing account. To set up a new project, run the following:
+```
+# Create new project and set it as your default
+lab-gcp --project NEW_ID create-project --billing-account XXXXXX-XXXXXX-XXXXXX --set-default
+# Create default bucket inside new project
+lab-gcp create-bucket --name NEW_BUCKET --set-default
+# Enable necessary APIs for project
+lab-gcp enable-apis
+# Configure network and firewall rules for project (as recommended by Broad)
+lab-gcp configure-network
+# Create midnight shutdown schedule for all time-managed instances in default zone
+lab-gcp create-schedule
+```
+
+After your project is set up, grant other users the minimum necessary permissions
+to create and manage their own instances in the project (via the Google Cloud console).

@@ -57,6 +57,10 @@ def init_defaults():
     project = input('Provide default GCP project ID (first column): ').strip()
     config.set('GCP', 'GCP_PROJECT_ID', project)
 
+    # Get image source project
+    project = input('Provide project ID to use as source of compute images: ').strip()
+    config.set('GCP', 'IMAGE_PROJECT', project)
+
     # Get default bucket -- using google cloud sdk
     call(['gsutil', 'ls', '-p', project])
     bucket = input('Provide default GCP bucket: ').strip()

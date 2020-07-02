@@ -46,6 +46,7 @@ class GCEInstanceManager(object):
         machine_type=config['GCP']['machine_type'],
         boot_disk_size=config['GCP']['boot_disk_size'],
         image=config['GCP']['image'],
+        image_project=config['GCP']['image_project'],
         disk_type='pd-standard',
     ):
         # Read basic start-up script
@@ -154,7 +155,8 @@ class GCEInstanceManager(object):
                             # global/images/family/my-image-family
                             #
                             # Use the specified custom image.
-                            'sourceImage': 'global/images/{}'.format(image)
+                            'sourceImage': 'projects/{}/global/images/{}'.format(image_project,
+                                                                                 image)
                         },
                         'autoDelete': True,  # Delete the disk when the instance is deleted
                         'boot': True,  # This is a boot disk
