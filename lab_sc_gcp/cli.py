@@ -419,14 +419,14 @@ def main():
                                'Please select a different name.')
 
         # TODO: make sure instance name contains no slashes, other breaking chars
-        res = create_instance(rstudio_passwd=parsed_args.rpass,
-                              user=parsed_args.user,
-                              name=parsed_args.instance,
-                              project=parsed_args.project,
-                              zone=parsed_args.zone,
-                              machine_type=parsed_args.machine_type,
-                              boot_disk_size=parsed_args.boot_disk_size,
-                              image=parsed_args.image)
+        instance_m = GCEInstanceManager(user=parsed_args.user,
+                                        name=parsed_args.instance,
+                                        project=parsed_args.project,
+                                        zone=parsed_args.zone)
+        res = instance_m.create(rstudio_passwd=parsed_args.rpass,
+                                machine_type=parsed_args.machine_type,
+                                boot_disk_size=parsed_args.boot_disk_size,
+                                image=parsed_args.image)
 
         # In case creation is slow
         time.sleep(5)
@@ -444,11 +444,12 @@ def main():
         call(sdk_command)
 
     if parsed_args.command == c_STOP:
+        instance_m = GCEInstanceManager(user=parsed_args.user,
+                                        name=parsed_args.instance,
+                                        project=parsed_args.project,
+                                        zone=parsed_args.zone)
         #TODO: Add check to see if instance has already been stopped
-        res = stop_instance(user=parsed_args.user,
-                            name=parsed_args.instance,
-                            project=parsed_args.project,
-                            zone=parsed_args.zone)
+        res = instance_m.stop()
         full_name = res['targetLink'].split('/')[-1]
         print('Your instance {} is being stopped. This may take a minute.'.format(full_name))
 
@@ -459,18 +460,20 @@ def main():
         confirmed = confirm("Are you sure you want to delete instance {}? ".format(full_name) +
                             "The corresponding boot disk will also be deleted.")
         if confirmed:
-            res = delete_instance(user=parsed_args.user,
-                                  name=parsed_args.instance,
-                                  project=parsed_args.project,
-                                  zone=parsed_args.zone)
+            instance_m = GCEInstanceManager(user=parsed_args.user,
+                                            name=parsed_args.instance,
+                                            project=parsed_args.project,
+                                            zone=parsed_args.zone)
+            res = instance_m.delete()
             print('Your instance {} is being deleted. This may take a minute.'.format(full_name))
 
     if parsed_args.command == c_START:
         # TODO: Add check to see if instance has already been started
-        res = start_instance(user=parsed_args.user,
-                             name=parsed_args.instance,
-                             project=parsed_args.project,
-                             zone=parsed_args.zone)
+        instance_m = GCEInstanceManager(user=parsed_args.user,
+                                        name=parsed_args.instance,
+                                        project=parsed_args.project,
+                                        zone=parsed_args.zone)
+        res = instance_m.start()
 
         full_name = res['targetLink'].split('/')[-1]
         print('Your instance {} is being started. This may take a minute.'.format(full_name))
@@ -494,11 +497,11 @@ def main():
                                'If you have recently sent a stop command, wait one or two minutes\n' +
                                'for the instance to stop fully before trying to set the machine type again.')
 
-        res = set_machine_type(user=parsed_args.user,
-                               machine_type=parsed_args.machine_type,
-                               name=parsed_args.instance,
-                               project=parsed_args.project,
-                               zone=parsed_args.zone)
+        instance_m = GCEInstanceManager(user=parsed_args.user,
+                                        name=parsed_args.instance,
+                                        project=parsed_args.project,
+                                        zone=parsed_args.zone)
+        res = instance_m.set_machine_type(machine_type=parsed_args.machine_type)
 
         print('The machine type of your instance {} has been updated to {}.'.format(full_name,
                                                                                     parsed_args.machine_type))
@@ -517,12 +520,12 @@ def main():
     if parsed_args.command == c_SET_TLABEL:
         label_value = 'time-unmanaged' if parsed_args.turn_off else 'time-managed'
 
-        res = set_label(label_key='env',
-                        label_value=label_value,
-                        user=parsed_args.user,
-                        name=parsed_args.instance,
-                        project=parsed_args.project,
-                        zone=parsed_args.zone)
+        instance_m = GCEInstanceManager(user=parsed_args.user,
+                                        name=parsed_args.instance,
+                                        project=parsed_args.project,
+                                        zone=parsed_args.zone)
+        res = instance_m.set_label(label_key='env',
+                                   label_value=label_value)
 
         full_name = res['targetLink'].split('/')[-1]
         print('Your instance {} has been set to {}.'.format(full_name,
