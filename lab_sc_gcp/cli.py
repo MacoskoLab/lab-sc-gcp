@@ -11,6 +11,7 @@ import time
 from lab_sc_gcp.config.configure import *
 from lab_sc_gcp.gce import *
 from lab_sc_gcp.storage import *
+from lab_sc_gcp.project import *
 from lab_sc_gcp.utilities import *
 from subprocess import PIPE, run, call
 
@@ -20,6 +21,14 @@ import warnings
 warnings.simplefilter(action='ignore', category=UserWarning)
 
 # Available commands
+c_INIT = 'init'
+
+# PROJECT COMMANDS
+c_CREATE_P = 'create-project'
+c_CREATE_B = 'create-bucket'
+c_ENABLE = 'enable-apis'
+c_CONF_NETWORK = 'configure-network'
+
 c_CREATE = 'create-instance'
 c_LIST = 'list-instances'
 c_STOP = 'stop-instance'
@@ -28,12 +37,11 @@ c_START = 'start-instance'
 c_SET_MACHINE = 'set-machine-type'
 c_LIST_MACHINES = 'list-machine-types'
 c_SET_TLABEL = 'set-time-label'
+
 c_UPLOAD_LIBS = 'upload-libs'
 c_UPLOAD_DIR_INST = 'upload-dir-instance'
 # TODO: THIS LAST ONE NEEDS TO BE ADDED
 c_DOWNLOAD_INST = 'download-from-inst'
-
-c_INIT = 'init'
 
 # Globals
 max_inst = 2  # max number of instances allowed at one time
@@ -54,12 +62,75 @@ def create_parser():
     args.add_argument(
         '--project',
         default=config['GCP']['gcp_project_id'],
-        help='Project ID (defaults to id specified in config file).',
+        help='Project ID (defaults to project specified in config file).',
     )
 
     # Create subcommands
     subargs = args.add_subparsers(dest='command')
 
+    ### INITIALIZATION UTILITIES ###
+    # Init parser
+    parser_init = subargs.add_parser(
+        c_INIT,
+        help="Initialize (or reset) primary default configuration settings " +
+             "(user, project, bucket, single cell library directory).",
+    )
+
+    ### PROJECT MANAGEMENT UTILITIES ###
+    # Create project subparser
+    parser_create_project = subargs.add_parser(
+        c_CREATE_P,
+        help="Create new Google Cloud project.",
+    )
+    parser_create_project.add_argument(
+        '--billing-account',
+        required=True,
+        help='Billing account to associate with project (eg. XXXXXX-XXXXXX-XXXXXX).',
+    )
+    parser_create_project.add_argument(
+        '--set-default',
+        action='store_true',
+        help='Set the new project as your default project.',
+    )
+    # Create bucket subparser
+    parser_create_bucket = subargs.add_parser(
+        c_CREATE_B,
+        help="Create new Google Cloud bucket associated with project.",
+    )
+    parser_create_bucket.add_argument(
+        '--name',
+        required=True,
+        help='Name for new bucket.',
+    )
+    parser_create_bucket.add_argument(
+        '--set-default',
+        action='store_true',
+        help='Set the new bucket as your default bucket.',
+    )
+    # Enable APIs subparser
+    parser_enable_apis = subargs.add_parser(
+        c_ENABLE,
+        help="Enable APIs relevant for resource manipulation."
+    )
+    parser_enable_apis.add_argument(
+        '--exclude-compute',
+        action='store_true',
+        help="Do not enable Compute Engine API."
+    )
+
+    # Configure network subparser
+    parser_configure_network = subargs.add_parser(
+        c_CONF_NETWORK,
+        help="Configure new network and subnetwork for increased GCE security.",
+    )
+    parser_configure_network.add_argument(
+        '--zone',
+        default=config['GCP']['gcp_zone'],
+        help='Zone (translated to region) to use for subnetwork.',
+    )
+
+
+    ### INSTANCE MANAGEMENT UTILITIES ###
     # Create instance subparser
     parser_create_instance = subargs.add_parser(
         c_CREATE,
@@ -237,6 +308,7 @@ def create_parser():
         help='Whether to turn time-management off. (OFF=instance stays on past midnight)',
     )
 
+    ### DATA UPLOAD/DOWNLOAD UTILITIES ###
     # Upload libraries to bucket parser
     parser_upload_libs = subargs.add_parser(
         c_UPLOAD_LIBS,
@@ -295,12 +367,6 @@ def create_parser():
         help='Name of instance to which to upload data.',
     )
 
-    # Init parser
-    parser_init = subargs.add_parser(
-        c_INIT,
-        help="Initialize default settings.",
-    )
-
     return args
 
 def main():
@@ -308,33 +374,32 @@ def main():
     parsed_args = create_parser().parse_args()
 
     if parsed_args.command == c_INIT:
-        # Get username
-        user = input('Provide your Broad username: ').strip()
-        config.set('LOCAL', 'USER', user)
+        init_defaults()
 
-        # Get default project -- using google cloud sdk
-        call(['gcloud', 'projects', 'list'])
-        project = input('Provide default GCP project ID (first column): ').strip()
-        config.set('GCP', 'GCP_PROJECT_ID', project)
-
-        # Get default bucket -- using google cloud sdk
-        call(['gsutil', 'ls', '-p', project])
-        bucket = input('Provide default GCP bucket: ').strip()
-        bucket = bucket.replace('gs://', '').replace('/', '')
-        config.set('GCP', 'bucket', bucket)
-
-        # Get default library directory
-        lib_dir = input('Provide path to single cell libraries: ').strip()
-        config.set('LOCAL', 'lib_dir_sc', lib_dir)
-
-        # Write config
-        with open(user_config, 'w') as configfile:
-            config.write(configfile)
-
-        print('Change additional defaults by modifying {} directly.'.format(user_config))
-
-    # Check for initialization
+    # Check for necessary defaults in all other cases
     check_init()
+
+    if parsed_args.command == c_CREATE_P:
+        res = create_project(project_id=parsed_args.project,
+                             billing_account=parsed_args.billing_account,
+                             set_default=parsed_args.set_default)
+
+        print("Your project {} has been created. You can set user permissions at ".format(parsed_args.project) +
+              "https://console.cloud.google.com/iam-admin/iam?project={}&supportedpurview=project&prefix=".format(parsed_args.project))
+
+    if parsed_args.command == c_CREATE_B:
+        bucket = create_bucket(name=parsed_args.name,
+                               project=parsed_args.project,
+                               set_default=parsed_args.set_default)
+        print('Bucket {} has been created under project {}.'.format(bucket.name, parsed_args.project))
+
+    if parsed_args.command == c_ENABLE:
+        enable_apis(project=parsed_args.project,
+                    exclude_compute=parsed_args.exclude_compute)
+
+    if parsed_args.command == c_CONF_NETWORK:
+        configure_network(project=parsed_args.project,
+                          region=parsed_args.zone)
 
     if parsed_args.command == c_CREATE:
         # Check that user has fewer than max instances
