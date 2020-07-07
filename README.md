@@ -58,7 +58,7 @@ gcloud init
 ```
 * After setting your default project, run 
 ```
-gcloud auth application-default login
+gcloud auth application-default login --disable-quota-project
 ``` 
 and follow the instructions for authentication. This will allow you to authenticate automatically later on.
 
