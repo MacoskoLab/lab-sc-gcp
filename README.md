@@ -78,6 +78,7 @@ conda create -n lab-sc-gcp python=3.6
 source activate lab-sc-gcp
 pip install git+https://github.com/MacoskoLab/lab-sc-gcp.git#egg=lab_sc_gcp
 ```
+* When you first create the environment, it's recommended you do it from an interactive UGER node. 
 * You must activate this environment each time you want to access the package:
 ```
 use Anaconda3
