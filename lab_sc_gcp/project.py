@@ -33,6 +33,7 @@ def create_project(
     req = projects.create(
         body={
             "projectId": project_id,
+            'name': project_id,
             # Automatically places under user organization
         }
     )
@@ -105,11 +106,10 @@ def enable_apis(
         print('Enabled Compute Engine API.')
     if not exclude_functions:
         call(['gcloud', 'services', 'enable', 'cloudfunctions.googleapis.com',
-              '--project', project])
-        call(['gcloud', 'services', 'enable', 'pubsub.googleapis.com',
-              '--project', project])
-        call(['gcloud', 'services', 'enable', 'cloudscheduler.googleapis.com',
-              '--project', project])
+              'pubsub.googleapis.com', 'cloudscheduler.googleapis.com',
+              'appengine.googleapis.com', '--project', project])
+        # Create app engine app in central region for now
+        call(['gcloud', 'app', 'create', '--region', 'us-central', '--project', project])
         print('Enabled Cloud Functions,Pub/Sub and Scheduler APIs.')
 
 def configure_network(
@@ -217,6 +217,7 @@ def create_schedule(
     shutdown_time="23,59",
     startup_time=None,
     zone=config['GCP']['gcp_zone'],
+    project=config['GCP']['gcp_project_id']
 ):
     # For now use gcloud utilities here
     # Got source from https://github.com/GoogleCloudPlatform/nodejs-docs-samples
@@ -224,24 +225,29 @@ def create_schedule(
     source_dir = resource_filename('lab_sc_gcp', 'schedule')
 
     # Create instance shutdown and startup functions
-    function_command = ['gcloud', 'pubsub', 'topics', 'create', 'stop-instance-event']
+    function_command = ['gcloud', 'pubsub', 'topics', 'create', 'stop-instance-event',
+                        '--project', project]
     call(function_command)
     function_command = ['gcloud', 'functions', 'deploy', 'stopInstancePubSub', '--trigger-topic',
-                        'stop-instance-event', '--runtime', 'nodejs8', '--source', source_dir]
+                        'stop-instance-event', '--project', project,
+                        '--runtime', 'nodejs8', '--source', source_dir]
     call(function_command)
     # Start up
-    function_command = ['gcloud', 'pubsub', 'topics', 'create', 'start-instance-event']
+    function_command = ['gcloud', 'pubsub', 'topics', 'create', 'start-instance-event',
+                        '--project', project]
     call(function_command)
     function_command = ['gcloud', 'functions', 'deploy', 'startInstancePubSub', '--trigger-topic',
-                        'start-instance-event', '--runtime', 'nodejs8', '--source', source_dir]
+                        'start-instance-event', '--project', project,
+                        '--runtime', 'nodejs8', '--source', source_dir]
     call(function_command)
 
     # Schedule the jobs, every day by default
-    # TODO: Automate the creation of App engine app instead of relying on prompt
+    # TODO: Add time-zone option instead of assuming east coast time
     stop_hr = shutdown_time.split(':')[0]
     stop_min = shutdown_time.split(':')[1]
     stop_args = ['gcloud', 'beta', 'scheduler', 'jobs', 'create', 'pubsub', 'shutdown-tm-instances',
-                 '--schedule', '{} {} * * *'.format(stop_min, stop_hr), '--topic', 'stop-instance-event',
+                 '--project', project, '--schedule', '{} {} * * *'.format(stop_min, stop_hr),
+                 '--topic', 'stop-instance-event',
                  '--message-body', '{{"zone":"{}", "label":"env=time-managed"}}'.format(zone),
                  '--time-zone', 'America/New_York']
     call(stop_args)
@@ -250,7 +256,11 @@ def create_schedule(
         start_hr = startup_time.split(':')[0]
         start_min = startup_time.split(':')[1]
         start_args = ['gcloud', 'beta', 'scheduler', 'jobs', 'create', 'pubsub', 'startup-tm-instances',
-                     '--schedule', '{} {} * * *'.format(start_min, start_hr), '--topic', 'start-instance-event',
-                     '--message-body', '{{"zone":"{}", "label":"env=time-managed"}}'.format(zone),
-                     '--time-zone', 'America/New_York']
+                      '--project', project, '--schedule', '{} {} * * *'.format(start_min, start_hr),
+                      '--topic', 'start-instance-event',
+                      '--message-body', '{{"zone":"{}", "label":"env=time-managed"}}'.format(zone),
+                      '--time-zone', 'America/New_York']
         call(start_args)
+
+
+# TODO: Create snapshot schedule that can be easily applied to all instance disks

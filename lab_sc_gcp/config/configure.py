@@ -11,10 +11,29 @@ import configparser
 from pkg_resources import resource_filename
 from pathlib import Path
 from subprocess import call
+from lab_sc_gcp.utilities import *
+from googleapiclient.discovery import build
+from google.cloud import storage
 
 # Config paths
 default_config = resource_filename('lab_sc_gcp', 'config/config.ini')
 user_config = os.path.join(Path.home(), '.lab_sc_gcp', 'config.ini')
+
+# A few project and bucket related functions
+def list_projects():
+    service = build('cloudresourcemanager', 'v1')
+    projects = service.projects()
+
+    res = projects.list().execute()
+
+    return res
+
+def list_buckets(project):
+    storage_client = storage.Client()
+    buckets = storage_client.list_buckets(project=project)
+
+    return [bucket.name for bucket in buckets]
+
 
 def generate_config():
     # Check if user config file exists
@@ -52,23 +71,31 @@ def init_defaults():
     user = input('Provide your Broad username: ').strip()
     config.set('LOCAL', 'USER', user)
 
-    # Get default project -- using google cloud sdk
-    call(['gcloud', 'projects', 'list'])
-    project = input('Provide default GCP project ID (first column): ').strip()
+    # Get default project
+    projects = list_projects()
+    available_proj_ids = [proj['projectId'] for proj in projects['projects']]
+    print("Available projects:\n{}".format('\n'.join(available_proj_ids)))
+    project = input_cv('Provide default GCP project ID: ',
+                       controlled_values=available_proj_ids).strip()
     config.set('GCP', 'GCP_PROJECT_ID', project)
 
     # Get image source project
-    project = input('Provide project ID to use as source of compute images: ').strip()
-    config.set('GCP', 'IMAGE_PROJECT', project)
+    image_project = input_cv('Provide project ID to use as source of compute images: ',
+                             controlled_values=available_proj_ids).strip()
+    config.set('GCP', 'IMAGE_PROJECT', image_project)
 
-    # Get default bucket -- using google cloud sdk
-    call(['gsutil', 'ls', '-p', project])
-    bucket = input('Provide default GCP bucket: ').strip()
+    # Get default bucket, selecting from those available on default and image source
+    buckets_d = list_buckets(project=project)
+    buckets_s = list_buckets(project=image_project)
+    buckets = buckets_d + buckets_s
+    print("Available buckets:\n{}".format('\n'.join(buckets)))
+    bucket = input_cv('Provide default GCP bucket: ',
+                      controlled_values=buckets).strip()
     bucket = bucket.replace('gs://', '').replace('/', '')
     config.set('GCP', 'bucket', bucket)
 
     # Get default library directory
-    lib_dir = input('Provide path to single cell libraries: ').strip()
+    lib_dir = input('Provide path to single cell libraries (check Guidelines google doc for instructions): ').strip()
     config.set('LOCAL', 'lib_dir_sc', lib_dir)
 
     # Write config
@@ -76,5 +103,6 @@ def init_defaults():
         config.write(configfile)
 
     print('Change additional defaults by modifying {} directly.'.format(user_config))
+    print('Check Computational Guidelines doc if default fields are unclear.')
 
 

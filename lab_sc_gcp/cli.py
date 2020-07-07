@@ -41,7 +41,6 @@ c_SET_TLABEL = 'set-time-label'
 
 c_UPLOAD_LIBS = 'upload-libs'
 c_UPLOAD_DIR_INST = 'upload-dir-instance'
-# TODO: THIS LAST ONE NEEDS TO BE ADDED
 c_DOWNLOAD_INST = 'download-from-inst'
 
 # Globals
@@ -63,7 +62,8 @@ def create_parser():
     args.add_argument(
         '--project',
         default=config['GCP']['gcp_project_id'],
-        help='Project ID (defaults to project specified in config file).',
+        help='Project ID (defaults to project specified in config file). ' +
+             'Flag applies to all subcommands.',
     )
 
     # Create subcommands
@@ -118,6 +118,11 @@ def create_parser():
         action='store_true',
         help="Do not enable Compute Engine API."
     )
+    parser_enable_apis.add_argument(
+        '--exclude-functions',
+        action='store_true',
+        help="Do not enable Cloud Functions, Pub/Sub and Scheduler APIs."
+    )
 
     # Configure network subparser
     parser_configure_network = subargs.add_parser(
@@ -143,7 +148,7 @@ def create_parser():
     parser_create_schedule.add_argument(
         '--startup-time',
         default=None,
-        help='Start up time for instances.',
+        help='Start up time for instances in 24 hour format, eg "9:00".',
     )
     parser_create_schedule.add_argument(
         '--zone',
@@ -191,7 +196,7 @@ def create_parser():
     parser_create_instance.add_argument(
         '--image',
         default=config['GCP']['image'],
-        help='Image to use in creating instance.',
+        help='Name of image to use in creating instance.',
     )
     parser_create_instance.add_argument(
         '--image-project',
@@ -295,7 +300,7 @@ def create_parser():
     parser_set_machine.add_argument(
         '--instance',
         default=config['GCP']['instance_name'],
-        help='Name of instance to start.',
+        help='Name of instance for which to set machine type.',
     )
 
     # List machine types subparser
@@ -332,19 +337,15 @@ def create_parser():
     parser_set_time_label.add_argument(
         '--turn-off',
         action='store_true',
-        help='Whether to turn time-management off. (OFF=instance stays on past midnight)',
+        help='Whether to turn time-management off. (OFF=instance stays on past midnight).',
     )
 
     ### DATA UPLOAD/DOWNLOAD UTILITIES ###
     # Upload libraries to bucket parser
     parser_upload_libs = subargs.add_parser(
         c_UPLOAD_LIBS,
-        help="Upload one or more single cell count libraries to default bucket.",
-    )
-    parser_upload_libs.add_argument(
-        '--user',
-        default=config['LOCAL']['USER'],
-        help='User name to associate with instance.',
+        help="Upload one or more single cell count libraries to default bucket. " +
+             "Currently accepts 10x count outputs or slide-seq pipeline outputs.",
     )
     parser_upload_libs.add_argument(
         '--bucket',
@@ -376,7 +377,7 @@ def create_parser():
     parser_upload_dir_inst.add_argument(
         '--dest-path',
         default=None,
-        help='Destination path for data.',
+        help='Destination path for data (defaults to user home directory).',
     )
     parser_upload_dir_inst.add_argument(
         '--user',
@@ -392,6 +393,37 @@ def create_parser():
         '--instance',
         default=config['GCP']['instance_name'],
         help='Name of instance to which to upload data.',
+    )
+
+    # Download from inst parser
+    parser_download_dir_inst = subargs.add_parser(
+        c_DOWNLOAD_INST,
+        help="Download file or directory from GCP instance.",
+    )
+    parser_download_dir_inst.add_argument(
+        '--source-path',
+        required=True,
+        help='File path (on instance) to data to download.',
+    )
+    parser_download_dir_inst.add_argument(
+        '--dest-path',
+        default='.',
+        help='Destination for download files (defaults to current directory).',
+    )
+    parser_download_dir_inst.add_argument(
+        '--user',
+        default=config['LOCAL']['USER'],
+        help='User name to associate with instance.',
+    )
+    parser_download_dir_inst.add_argument(
+        '--zone',
+        default=config['GCP']['gcp_zone'],
+        help='GCP zone.',
+    )
+    parser_download_dir_inst.add_argument(
+        '--instance',
+        default=config['GCP']['instance_name'],
+        help='Name of instance from which to download data.',
     )
 
     return args
@@ -422,7 +454,8 @@ def main():
 
     if parsed_args.command == c_ENABLE:
         enable_apis(project=parsed_args.project,
-                    exclude_compute=parsed_args.exclude_compute)
+                    exclude_compute=parsed_args.exclude_compute,
+                    exclude_functions=parsed_args.exclude_functions)
 
     if parsed_args.command == c_CONF_NETWORK:
         configure_network(project=parsed_args.project,
@@ -431,7 +464,8 @@ def main():
     if parsed_args.command == c_CREATE_SCHED:
         create_schedule(shutdown_time=parsed_args.shutdown_time,
                         startup_time=parsed_args.startup_time,
-                        zone=parsed_args.zone)
+                        zone=parsed_args.zone,
+                        project=parsed_args.project)
 
     if parsed_args.command == c_CREATE:
         # Check that user has fewer than max instances
@@ -606,6 +640,19 @@ def main():
         # Could also do this with paramiko instead
         scp_args = ['gcloud', 'compute', 'scp', '--recurse', parsed_args.source_path,
                     '{}:{}'.format(full_name, dest_path), '--project', parsed_args.project,
+                    '--zone', parsed_args.zone]
+        call(scp_args)
+
+        # gcloud logs directly to console
+
+    if parsed_args.command == c_DOWNLOAD_INST:
+        # Generate full instance name
+        full_name = get_full_inst_name(parsed_args.instance, parsed_args.user)
+
+        # Could also do this with paramiko instead
+        scp_args = ['gcloud', 'compute', 'scp', '--recurse',
+                    '{}:{}'.format(full_name, parsed_args.source_path), parsed_args.dest_path,
+                    '--project', parsed_args.project,
                     '--zone', parsed_args.zone]
         call(scp_args)
 

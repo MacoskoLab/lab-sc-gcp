@@ -257,3 +257,6 @@ def list_instances(
     res = req.execute()
     # print(json.dumps(res, sort_keys=True, indent=4))
     return res
+
+#TODO: Add a function to automatically attach a snapshot schedule to someone's disk once
+# instance is created

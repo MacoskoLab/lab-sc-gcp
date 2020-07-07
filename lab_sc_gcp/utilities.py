@@ -11,8 +11,17 @@ def get_full_inst_name(name, user):
         name = '{}-{}'.format(name, user)
     return name
 
-def confirm(question):
+def confirm(prompt):
     while True:
-        answer = input(question + ' (y/n): ').lower().strip()
+        answer = input(prompt + ' (y/n): ').lower().strip()
         if answer in ('y', 'yes', 'n', 'no'):
             return answer in ('y', 'yes')
+
+def input_cv(prompt, controlled_values=None):
+    inputval = input(prompt).strip()
+    if controlled_values and inputval not in controlled_values:
+        inputval = input_cv("Value not included in list of controlled values. Try again: ",
+                            controlled_values=controlled_values)
+        return inputval
+    else:
+        return inputval
