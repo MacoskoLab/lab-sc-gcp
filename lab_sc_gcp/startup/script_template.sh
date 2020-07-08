@@ -9,3 +9,6 @@ fi
 echo '${USER}:${R_PASS}' | chpasswd
 usermod -a -G staff '${USER}'
 usermod -a -G google-sudoers '${USER}'
+
+mkdir -p /home/data/libraries && chmod 777 /home/data && chmod 777 /home/data/libraries/
+mkdir -p /home/downloads && chmod 777 /home/downloads

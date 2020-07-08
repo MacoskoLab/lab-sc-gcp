@@ -18,9 +18,13 @@ Relies on GCP images with RStudio Server and common single cell packages like Se
     * [`lab-gcp create-instance`](#lab-gcp-create-instance)
     * [`lab-gcp list-instances`](#lab-gcp-list-instances)
     * [`lab-gcp stop-instance`](#lab-gcp-stop-instance)
-    * [`lab-gcp stop-instance`](#lab-gcp-start-instance)
+    * [`lab-gcp delete-instance`](#lab-gcp-delete-instance)
+    * [`lab-gcp start-instance`](#lab-gcp-start-instance)
     * [`lab-gcp set-machine-type`](#lab-gcp-set-machine-type)
+    * [`lab-gcp list-machine-types`](#lab-gcp-list-machine-types)
+    * [`lab-gcp set-time-label`](#lab-gcp-set-time-label)
     * [`lab-gcp upload-libs`](#lab-gcp-upload-libs)
+    * [`lab-gcp upload-dir-instance`](#lab-gcp-upload-dir-instance)
     * [`lab-gcp download-from-inst`](#lab-gcp-download-from-inst)
 * [Bucket to instance transfer](#bucket-to-instance-transfer)
 * [Time management exceptions](#time-management-exceptions)
@@ -274,6 +278,19 @@ optional arguments:
   --instance INSTANCE  Name of instance to stop.
 ```
 
+#### `lab-gcp delete-instance`
+
+```
+usage: lab-gcp delete-instance [-h] [--user USER] [--zone ZONE]
+                              [--instance INSTANCE]
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --user USER          User name to associate with instance.
+  --zone ZONE          GCP zone.
+  --instance INSTANCE  Name of instance to delete.
+```
+
 #### `lab-gcp start-instance`
 
 ```
@@ -304,6 +321,31 @@ optional arguments:
   --instance INSTANCE   Name of instance to start.
 ```
 
+#### `lab-gcp list-machine-types`
+
+```
+usage: lab-gcp list-machine-types [-h] [--zone ZONE]
+
+optional arguments:
+  -h, --help   show this help message and exit
+  --zone ZONE  GCP zone.
+```
+
+#### `lab-gcp set-time-label`
+
+```
+usage: lab-gcp set-time-label [-h] [--user USER] [--zone ZONE]
+                             [--instance INSTANCE] [--turn-off]
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --user USER          User name to associate with instance.
+  --zone ZONE          GCP zone.
+  --instance INSTANCE  Name of instance to set label on.
+  --turn-off           Whether to turn time-management off. (OFF=instance
+                       stays on past midnight).
+```
+
 #### `lab-gcp upload-libs`
 
 ```
@@ -321,6 +363,26 @@ optional arguments:
   --library-dir LIBRARY_DIR
                         Path to directory where libraries stored (defaults to
                         /broad/macosko/data/libraries).
+```
+
+#### `lab-gcp upload-dir-instance`
+
+```
+usage: lab-gcp upload-dir-instance [-h] --source-path SOURCE_PATH
+                                  [--dest-path DEST_PATH] [--user USER]
+                                  [--zone ZONE] [--instance INSTANCE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --source-path SOURCE_PATH
+                        File path to data to upload.
+  --dest-path DEST_PATH
+                        Destination path for data (defaults to user home
+                        directory).
+  --user USER           User name to associate with instance.
+  --zone ZONE           GCP zone.
+  --instance INSTANCE   Name of instance to which to upload data.
+
 ```
 
 #### `lab-gcp download-from-inst`
